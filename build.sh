@@ -10,6 +10,6 @@ gcc -c -o backend_x11.o backend_x11.c \
     $(pkg-config --cflags cairo) \
     $(pkg-config --cflags x11) 
 
-gcc -o my_test npoc_main.o cairo_draw.o backend_x11.o \
+gcc -o npoc_meter npoc_main.o cairo_draw.o backend_x11.o \
     $(pkg-config --libs cairo) \
     $(pkg-config --libs x11) 
