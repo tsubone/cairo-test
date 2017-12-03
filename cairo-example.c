@@ -6,11 +6,11 @@
 #include <X11/Xlib.h>
 #include <stdio.h>
 
-static cairo_surface_t *surface;
 static Display *dpy;
+static Window win;
 
-void
-paint (cairo_t *cairo) {
+static void
+my_paint_to_cairo (cairo_t *cairo) {
   fprintf(stderr, "paint\n");
   cairo_set_line_width(cairo, 1);
   cairo_set_source_rgb(cairo, 128, 128, 0);
@@ -18,22 +18,32 @@ paint (cairo_t *cairo) {
   cairo_stroke(cairo);
 }
 
-int main() {
-  static cairo_t *cairo;
-  
+static cairo_surface_t*
+my_create_cairo_surface (int w, int h)
+{
+  cairo_surface_t *csurface;
+
   dpy = XOpenDisplay(NULL);
   if (dpy == NULL) {
     fprintf(stderr, "Error: Can't open display. Is DISPLAY set?\n");
-    return 1;
+    return NULL;
   }
 
-  Window w;
-  w = XCreateSimpleWindow(dpy, RootWindow(dpy, 0),
-                          0, 0, 200, 200, 0, 0, BlackPixel(dpy, 0));
-  XSelectInput(dpy, w, StructureNotifyMask | ExposureMask);
-  XMapWindow(dpy, w);
+  win = XCreateSimpleWindow(dpy, RootWindow(dpy, 0),
+                          0, 0, w, h, 0, 0, BlackPixel(dpy, 0));
+  XSelectInput(dpy, win, StructureNotifyMask | ExposureMask);
+  XMapWindow(dpy, win);
 
-  surface = cairo_xlib_surface_create(dpy, w, DefaultVisual(dpy, 0), 200, 200);
+  csurface = cairo_xlib_surface_create(dpy, win, DefaultVisual(dpy, 0), w, h);
+
+  return csurface;
+}
+
+int main() {
+  cairo_t *cairo;
+  cairo_surface_t *surface;
+
+  surface = my_create_cairo_surface (200, 200);
   cairo = cairo_create(surface);
 
   while (1) {
@@ -45,9 +55,12 @@ int main() {
       case MapNotify:
       case Expose:
       case ConfigureNotify:
-        paint(cairo);
+        my_paint_to_cairo (cairo);
 	if (e.type == Expose)
-	  XSendEvent(dpy, w, False, NoEventMask, &e);
+	  {
+	    fprintf (stderr, "send expose %d\n", (int)win);
+	    XSendEvent(dpy, win, False, NoEventMask, &e);
+	  }
         break;
     }
   }
