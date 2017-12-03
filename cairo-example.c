@@ -39,13 +39,10 @@ my_create_cairo_surface (int w, int h)
   return csurface;
 }
 
-int main() {
-  cairo_t *cairo;
-  cairo_surface_t *surface;
 
-  surface = my_create_cairo_surface (200, 200);
-  cairo = cairo_create(surface);
-
+static cairo_surface_t*
+my_event_loop (cairo_t *cairo)
+{
   while (1) {
     XEvent e;
     XNextEvent(dpy, &e);
@@ -58,12 +55,24 @@ int main() {
         my_paint_to_cairo (cairo);
 	if (e.type == Expose)
 	  {
-	    fprintf (stderr, "send expose %d\n", (int)win);
+	    //	    fprintf (stderr, "send expose %d\n", (int)win);
 	    XSendEvent(dpy, win, False, NoEventMask, &e);
 	  }
         break;
     }
   }
+
+  return 0;
+}
+
+int main() {
+  cairo_t *cairo;
+  cairo_surface_t *surface;
+
+  surface = my_create_cairo_surface (200, 200);
+  cairo = cairo_create(surface);
+
+  my_event_loop (cairo);
 
   return 0;
 }
