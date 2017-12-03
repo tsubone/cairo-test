@@ -7,11 +7,11 @@
 #include <stdio.h>
 
 static cairo_surface_t *surface;
-static cairo_t *cairo;
 static Display *dpy;
 
-void paint(Window w) {
-  //printf("paint\n");
+void
+paint (cairo_t *cairo) {
+  fprintf(stderr, "paint\n");
   cairo_set_line_width(cairo, 1);
   cairo_set_source_rgb(cairo, 128, 128, 0);
   cairo_rectangle(cairo, 20, 20, 50, 50);
@@ -19,6 +19,8 @@ void paint(Window w) {
 }
 
 int main() {
+  static cairo_t *cairo;
+  
   dpy = XOpenDisplay(NULL);
   if (dpy == NULL) {
     fprintf(stderr, "Error: Can't open display. Is DISPLAY set?\n");
@@ -43,7 +45,9 @@ int main() {
       case MapNotify:
       case Expose:
       case ConfigureNotify:
-        paint(w);
+        paint(cairo);
+	if (e.type == Expose)
+	  XSendEvent(dpy, w, False, NoEventMask, &e);
         break;
     }
   }
