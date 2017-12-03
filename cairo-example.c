@@ -1,7 +1,3 @@
-/* compile with:
- * gcc $(pkg-config cairo-xlib-xrender --cflags --libs) cairo-example.c
- */
-
 #include <cairo-xlib.h>
 #include <X11/Xlib.h>
 #include <stdio.h>
@@ -12,19 +8,6 @@
 #include "npoc_meter.h"
 
 static npoc_meter_t npoc_meter;
-
-#if 0
-static cairo_surface_t *bg_img;
-static cairo_surface_t *meter_img;
-static cairo_surface_t *speed_needle_img;
-static cairo_surface_t *tacho_needle_img;
-
-static cairo_t *speed_needle_ctx;
-static cairo_t *tacho_needle_ctx;
-
-static char *speed_needle_data;
-static char *tacho_needle_data;
-#endif
 
 #define SPEED_POS_X 30.0
 #define SPEED_POS_Y 30.0
@@ -50,6 +33,8 @@ my_composite (npoc_meter_t *npoc, cairo_t *cairo)
 
   cairo_set_source_surface(cairo, npoc->tacho_needle_img, TACHO_POS_X, TACHO_POS_Y);
   cairo_paint(cairo);
+
+  /* why does not need XFlush ()? */
 
   return 0;
 }
@@ -79,9 +64,18 @@ my_create_cairo_surface (int w, int h)
 }
 
 static int my_count = 0;
+static cairo_t *x11_cairo;
+static cairo_surface_t *x11_surface;
+
+int
+backend_init (int w, int h)
+{
+  x11_surface = my_create_cairo_surface (w, h);
+  x11_cairo = cairo_create (x11_surface);
+}
 
 static cairo_surface_t*
-my_event_loop (npoc_meter_t *npoc, cairo_t *cairo)
+backend_event_loop (npoc_meter_t *npoc)
 {
   while (1) {
     XEvent e;
@@ -93,7 +87,7 @@ my_event_loop (npoc_meter_t *npoc, cairo_t *cairo)
       case Expose:
       case ConfigureNotify:
         npoc_cairo_paint (npoc, my_count++);
-	my_composite (npoc, cairo);
+	my_composite (npoc, x11_cairo);
 
 	if (e.type == Expose)
 	  {
@@ -108,17 +102,16 @@ my_event_loop (npoc_meter_t *npoc, cairo_t *cairo)
   return 0;
 }
 
-int main() {
-  cairo_t *cairo;
-  cairo_surface_t *surface;
-
+int
+main (int argc, char *argv[])
+{
   memset (&npoc_meter, 0, sizeof (npoc_meter));
 
-  surface = my_create_cairo_surface (750, 400);
-  cairo = cairo_create(surface);
+  backend_init (750, 400);
+
   npoc_cairo_initialize (&npoc_meter);
 
-  my_event_loop (&npoc_meter, cairo);
+  backend_event_loop (&npoc_meter);
 
   return 0;
 }
