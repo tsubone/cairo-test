@@ -26,4 +26,10 @@ npoc_cairo_initialize (npoc_meter_t *npoc);
 int
 npoc_cairo_paint (npoc_meter_t *npoc, int count);
 
+int
+backend_init (int w, int h);
+
+int
+backend_event_loop (npoc_meter_t *npoc);
+
 #endif /* _NPOC_METER_H_ */
