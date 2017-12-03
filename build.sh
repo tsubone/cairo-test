@@ -1,6 +1,6 @@
 #!/bin/sh
 
-gcc -c -o cairo-example.o cairo-example.c \
+gcc -c -o npoc_main.o npoc_main.c \
     $(pkg-config --cflags cairo)
 
 gcc -c -o cairo_draw.o cairo_draw.c \
@@ -10,6 +10,6 @@ gcc -c -o backend_x11.o backend_x11.c \
     $(pkg-config --cflags cairo) \
     $(pkg-config --cflags x11) 
 
-gcc -o my_test cairo-example.o cairo_draw.o backend_x11.o\
+gcc -o my_test npoc_main.o cairo_draw.o backend_x11.o \
     $(pkg-config --libs cairo) \
     $(pkg-config --libs x11) 
