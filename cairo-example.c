@@ -9,6 +9,11 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "npoc_meter.h"
+
+static npoc_meter_t npoc_meter;
+
+#if 0
 static cairo_surface_t *bg_img;
 static cairo_surface_t *meter_img;
 static cairo_surface_t *speed_needle_img;
@@ -19,39 +24,42 @@ static cairo_t *tacho_needle_ctx;
 
 static char *speed_needle_data;
 static char *tacho_needle_data;
+#endif
 
 #define NEEDLE_WIDTH  300
 #define NEEDLE_HEIGHT 300
 
-static int
-my_cairo_initialize (cairo_t *cairo)
+int
+npoc_cairo_initialize (npoc_meter_t *npoc)
 {
-  bg_img    = cairo_image_surface_create_from_png("meter.png");
-  meter_img = cairo_image_surface_create_from_png("meter.png");
+  npoc->bg_img    = cairo_image_surface_create_from_png("meter.png");
+  npoc->meter_img = cairo_image_surface_create_from_png("meter.png");
 
-  speed_needle_data = malloc (NEEDLE_WIDTH * NEEDLE_HEIGHT * 4);
+  npoc->speed_needle_data = malloc (NEEDLE_WIDTH * NEEDLE_HEIGHT * 4);
 
-  speed_needle_img = cairo_image_surface_create_for_data (speed_needle_data,
-							  CAIRO_FORMAT_ARGB32,
-							  NEEDLE_WIDTH,
-							  NEEDLE_HEIGHT,
-							  NEEDLE_WIDTH * 4);
-  speed_needle_ctx = cairo_create (speed_needle_img);
+  npoc->speed_needle_img =
+    cairo_image_surface_create_for_data (npoc->speed_needle_data,
+					   CAIRO_FORMAT_ARGB32,
+					   NEEDLE_WIDTH,
+					   NEEDLE_HEIGHT,
+					   NEEDLE_WIDTH * 4);
+  
+  npoc->speed_needle_ctx = cairo_create (npoc->speed_needle_img);
 
-  tacho_needle_data = malloc (NEEDLE_WIDTH * NEEDLE_HEIGHT * 4);
-  tacho_needle_img = cairo_image_surface_create_for_data (tacho_needle_data,
-							  CAIRO_FORMAT_ARGB32,
-							  NEEDLE_WIDTH,
-							  NEEDLE_HEIGHT,
-							  NEEDLE_WIDTH * 4);
-  tacho_needle_ctx = cairo_create (tacho_needle_img);
+  npoc->tacho_needle_data = malloc (NEEDLE_WIDTH * NEEDLE_HEIGHT * 4);
+  npoc->tacho_needle_img = 
+    cairo_image_surface_create_for_data (npoc->tacho_needle_data,
+					 CAIRO_FORMAT_ARGB32,
+					 NEEDLE_WIDTH,
+					 NEEDLE_HEIGHT,
+					 NEEDLE_WIDTH * 4);
+  
+  npoc->tacho_needle_ctx = cairo_create (npoc->tacho_needle_img);
 
   //  cairo_surface_destroy (meter_img);
 
   return 0;
 }
-
-static int my_count = 0;
 
 static int
 draw_speed_needle(cairo_t *ctx, int count)
@@ -81,16 +89,14 @@ draw_tacho_needle(cairo_t *ctx, int count)
   return 0;
 }
 
-static int
-my_cairo_paint (cairo_t *cairo) {
+int
+npoc_cairo_paint (npoc_meter_t *npoc, int count) {
 
   fprintf(stderr, "paint\n");
 
-  my_count++;
+  draw_speed_needle(npoc->speed_needle_ctx, count);
 
-  draw_speed_needle(speed_needle_ctx, my_count);
-
-  draw_tacho_needle(tacho_needle_ctx, my_count);
+  draw_tacho_needle(npoc->tacho_needle_ctx, count);
 
   return 0;
 }
@@ -102,21 +108,22 @@ my_cairo_paint (cairo_t *cairo) {
 #define TACHO_POS_Y 30.0
 
 static int
-my_composite (cairo_t *cairo) {
+my_composite (npoc_meter_t *npoc, cairo_t *cairo)
+{
   fprintf(stderr, "composite \n");
 
   cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
-  cairo_set_source_surface(cairo, bg_img, 0, 0);
+  cairo_set_source_surface(cairo, npoc->bg_img, 0, 0);
   cairo_paint(cairo);
 
   cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
-  cairo_set_source_surface(cairo, meter_img, 0, 0);
+  cairo_set_source_surface(cairo, npoc->meter_img, 0, 0);
   cairo_paint(cairo);
 
-  cairo_set_source_surface(cairo, speed_needle_img, SPEED_POS_X, SPEED_POS_Y);
+  cairo_set_source_surface(cairo, npoc->speed_needle_img, SPEED_POS_X, SPEED_POS_Y);
   cairo_paint(cairo);
 
-  cairo_set_source_surface(cairo, tacho_needle_img, TACHO_POS_X, TACHO_POS_Y);
+  cairo_set_source_surface(cairo, npoc->tacho_needle_img, TACHO_POS_X, TACHO_POS_Y);
   cairo_paint(cairo);
 
   return 0;
@@ -146,9 +153,10 @@ my_create_cairo_surface (int w, int h)
   return csurface;
 }
 
+static int my_count = 0;
 
 static cairo_surface_t*
-my_event_loop (cairo_t *cairo)
+my_event_loop (npoc_meter_t *npoc, cairo_t *cairo)
 {
   while (1) {
     XEvent e;
@@ -159,8 +167,8 @@ my_event_loop (cairo_t *cairo)
       case MapNotify:
       case Expose:
       case ConfigureNotify:
-        my_cairo_paint (cairo);
-	my_composite (cairo);
+        npoc_cairo_paint (npoc, my_count++);
+	my_composite (npoc, cairo);
 
 	if (e.type == Expose)
 	  {
@@ -179,11 +187,13 @@ int main() {
   cairo_t *cairo;
   cairo_surface_t *surface;
 
+  memset (&npoc_meter, 0, sizeof (npoc_meter));
+
   surface = my_create_cairo_surface (750, 400);
   cairo = cairo_create(surface);
-  my_cairo_initialize (cairo);
+  npoc_cairo_initialize (&npoc_meter);
 
-  my_event_loop (cairo);
+  my_event_loop (&npoc_meter, cairo);
 
   return 0;
 }
